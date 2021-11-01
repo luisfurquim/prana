@@ -53,8 +53,8 @@ So, begin importing Prana as a module and start it indicating which modules to l
 ```
 
 In the example above, we defined a module root folder localized at the './my-modules' folder, just below the main application folder.
-So, the module 'pranaTeste' will be at the './my-modules/pranaTeste' folder and will be invoked in the html application with the element tag '<prana-teste></prana-teste>'.
-Additionally , the module 'pranaTeste2' will be at the './my-modules/pranaTeste2' folder and will be invoked in the html application with the element tag '<prana-teste2></prana-teste2>'.
+So, the module 'pranaTeste' will be at the './my-modules/pranaTeste' folder and will be invoked in the html application with the element tag '```<prana-teste></prana-teste>```'.
+Additionally , the module 'pranaTeste2' will be at the './my-modules/pranaTeste2' folder and will be invoked in the html application with the element tag '```<prana-teste2></prana-teste2>```'.
 
 Example:
 
