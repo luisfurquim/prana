@@ -119,7 +119,8 @@ export default function pranaTeste(ready) {
    });
 
    return this;
-}```
+}
+```
 
 For the pranaTeste2 module, our pranaTeste2.html could be defined just in this way:
 ```Html
@@ -141,7 +142,8 @@ export default function pranaTeste(ready) {
    });
 
    return this;
-}```
+}
+```
 
 So, you need to export a list of the accepted attributes as an array of strings named 'attr' containg a list of them and the main function as default.
 
