@@ -121,8 +121,7 @@ export default function pranaTeste(ready) {
    return this;
 }```
 
-
-Our pranaTeste2.html could be defined just in this way:
+For the pranaTeste2 module, our pranaTeste2.html could be defined just in this way:
 ```Html
 <div>{{b}} {{d}}</div>
 ```
