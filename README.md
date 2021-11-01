@@ -151,7 +151,7 @@ The main function has one argument of Promise type, you can name it as you wish,
 The function called by resolving the Promise receives one argument.
 I named it with the highly creative ( :P ) 'obj' name, feel free to suggest a more adequate one!
 This parameter has two properties:
-* this: is the main 'this' object, the same that you may have added some properties. But it also may have some properties added/updated if the HTML which inserted the custom tag element that invoked your module has defined any attribute values. In this case, those attribute values will create/update properties named after theses attributes.
+* this: is the main 'this' object, the same that you may have added some properties. But it also may have some properties added/updated if the HTML which inserted the custom tag element that invoked your module has defined any attribute values. In this case, those attribute values will create/update properties named after these attributes.
 * dom: is the dom root of your template.
 
 The properties you assign to the 'this' variable will be accessible by the HTML template through the brace syntax or through the array or conditional syntax.
