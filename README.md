@@ -145,7 +145,7 @@ export default function pranaTeste(ready) {
 }
 ```
 
-So, you need to export a list of the accepted attributes as an array of strings named 'attr' containg a list of them and the main function as default.
+So, in each module, you need to export a list of the accepted attributes as an array of strings named 'attr' containg a list of them and the main function as default.
 
 The main function has one argument of Promise type, you can name it as you wish, but a good standard could be naming it 'ready'.
 The function called by resolving the Promise receives one argument.
