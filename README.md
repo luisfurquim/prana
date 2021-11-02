@@ -166,6 +166,140 @@ The array syntax is just a star sign character before the refered property, used
 
 At the end of your main function, you MUST return 'this' to Prana.
 
+## Propagation
 
+Under certain conditions, Prana automatically propagates values across Prana modules.
+There are two types of propagation:
+* Propagation down;
+* Propagation up.
+
+### Propagation Down;
+
+Propagation down occurs whenever you change a property in a module's 'this' which id used to define the value of an attribute of an element's tag of another module.
+
+See the example below:
+
+
+```HTML
+<!-- Parent-Module template-->
+<child-module a="Answer: {{x}}"></child-module>
+```
+
+```Javascript
+// Parent-module code
+export const attr = [];
+export default function parentModule(ready) {
+   this.x = "";
+
+   ready.then(function(obj) {
+      setTimeout(function() {
+         obj.this.x = "42";
+      }, 3000);
+   });
+
+}
+
+```
+
+
+
+```HTML
+<!-- Child-Module template-->
+{{a}}
+```
+
+```Javascript
+// Child-module code
+export const attr = ['a'];
+export default function childModule(ready) {
+   this.a = "";
+
+   ready.then(function(obj) {
+      console.log("before changing a=", obj.this.a);
+      setTimeout(function() {
+         console.log("After changing a=", obj.this.a);
+      }, 4000);
+   });
+
+}
+
+```
+
+So, the parent module's template invoke the child module by using its element tag and binds its attribute 'a' to it's property 'x'.
+According to parent's logic, after 3 seconds its 'x' property is changed from "" to "42".
+This fires a value propagation, first changing the HTML from its own template (making the attribute change to "Answer: 42" ).
+Because this an attribute of a Prana module's element tag, propagation continues across module boudaries and so the child module's property 'a' changes its value from "Answer: " to "Answer: 42".
+Finally, by modifying 'a' property's value, the child module template is also changed because it is bound to the corresponding property, according to the brace syntax.
+
+
+
+
+
+### Propagation Up;
+
+Propagation up is a bit trickier.
+In theory it would be just a propagation in the other direction.
+But there are some limitations.
+
+Let's change the modules to the codes below:
+
+```Javascript
+// Parent-module code
+export const attr = [];
+export default function parentModule(ready) {
+   this.x = "";
+
+   ready.then(function(obj) {
+      setTimeout(function() {
+         obj.this.x = "42";
+         setTimeout(function() {
+            console.log("After changing x=", obj.this.x);
+         }, 6000);
+      }, 3000);
+   });
+
+}
+
+```
+
+```Javascript
+// Child-module code
+export const attr = ['a'];
+export default function childModule(ready) {
+   this.a = "";
+
+   ready.then(function(obj) {
+      console.log("before changing a=", obj.this.a);
+      setTimeout(function() {
+         console.log("After changing a=", obj.this.a);
+         setTimeout(function() {
+            obj.this.a = "21 + 21";
+         }, 4000);
+      }, 4000);
+   });
+
+}
+
+```
+
+After 8 seconds, the child module will change it a property to "21 + 21".
+It will change the template according to the bind using the brace syntax.
+But this will be all the propagation you'll see.
+No propagation of any value will happen to the parent module.
+
+Now, change the parent module to this:
+
+```HTML
+<!-- Parent-Module template-->
+<child-module a="{{x}}"></child-module>
+```
+
+Now, as you can see, after 8 seconds, the child module will change it a property to "21 + 21".
+As this property is bound to the module's element tag attribute, this will fire a propagation up to parent module.
+And because parent module bound 'a' attribute of child to its 'x' property, this property will also change to "21 + 21".
+
+So, why we saw no propagation from the child to the parent in the first example?
+That's because propagation up only occurs when the bind is limited to the value of the property and not a bit more.
+In other words 'a={{x}}' binds 'a' with 'x', but 'a="Answer: {{x}}"' doesn't bind them because of the presence of the 'Answer: ' string.
 
 
