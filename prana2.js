@@ -257,7 +257,7 @@ function getReferences(model) {
    var i, j;
    var tree={}, arrays=[];
    var refs, tmpref, found, hasRef, arrayVar, cond, sub;
-   var plug, parent;
+   var plug, parent, name;
 
    found = false;
 
@@ -319,6 +319,40 @@ function getReferences(model) {
          tree.refs[model.attributes[i].name] = tmpref;
          if (isPureReference(tmpref)) {
             model.attributes[i].pranaRef = tmpref;
+            if (model.attributes[i].name=="value") {
+               name = model.tagName.toLowerCase();
+               if ((name=="input") || (name=="select") || (name=="textarea")) {
+                  model.attributes[i].pranaTrackValue = function(oldchange) {
+                     return function(ev) {
+                        var i, attr;
+                        var sym, key;
+                        var changed;
+
+                        for(i=0; i<ev.target.attributes.length; i++) {
+                           if (ev.target.attributes[i].name == "value") {
+                              attr = ev.target.attributes[i];
+                              if (
+                                 (attr.pranaRef!==undefined) &&
+                                 (attr.pranaCtx!==undefined)
+                              ) {
+                                 [sym, key] = refOf(attr.pranaRef, attr.pranaCtx);
+                                 if ((sym !== undefined) && (key !== undefined) && (sym[key] != ev.target.value)) {
+                                    changed = true;
+                                    sym[key] = ev.target.value;
+                                 }
+                              }
+                              break;
+                           }
+                        }
+
+                        if (typeof oldchange === "function") {
+                           oldchange(ev);
+                        }
+                     };
+                  }(model.onchange);
+                  model.onchange = model.pranaTrackValue;
+               }
+            }
          }
       }
    }
@@ -374,14 +408,34 @@ function solveAll(ref, ctx) {
 }
 
 function syncElement(dom, ref, ctx, syncDown) {
-   var k, val, attr;
+   var k, val, attr, name;
 
    for(k in ref.refs) {
       if (ref.refs.hasOwnProperty(k)) {
          val = solveAll(ref.refs[k], ctx);
          dom.setAttribute(k, val);
          attr = dom.getAttributeNode(k);
+         if (attr.name=="value") {
+            name = dom.tagName.toLowerCase();
+            if ((name=="input") || (name=="select") || (name=="textarea")) {
+               dom.value = val;
+            }
+         }
          if (attr.pranaRef !== undefined) {
+            if (attr.pranaTrackValue !== undefined) {
+               dom.onchange = function(ev) {
+                  var host = dom;
+
+                  while((host!==null) && (host.prana===undefined)) {
+                     host = host.parentNode;
+                  }
+                  attr.pranaTrackValue(ev);
+
+                  if ((host!==null) && (host.prana!==undefined)) {
+                     host.prana.sync();
+                  }
+               };
+            }
             attr.pranaCtx = ctx;
          }
 
@@ -424,6 +478,10 @@ function cloneRefs(model, node) {
    for(i=0; i<model.attributes.length; i++) {
       if (model.attributes[i].pranaRef !== undefined) {
          node.attributes[i].pranaRef = model.attributes[i].pranaRef;
+         if (model.attributes[i].pranaTrackValue !== undefined) {
+            node.attributes[i].pranaTrackValue = model.attributes[i].pranaTrackValue;
+            node.onchange = node.pranaTrackValue;
+         }
       }
    }
 
@@ -487,10 +545,14 @@ function sync(dom, ref, ctx, syncDown) {
    var plug;
 
    if (ref.type == txt) {
-      dom.data = solveAll(ref.ref, ctx);
+      if ((dom.parentNode!==null) && (dom.parentNode!==undefined) && (dom.parentNode.tagName.toLowerCase()=="textarea")) {
+         dom.parentNode.value = solveAll(ref.ref, ctx);
+      } else {
+         dom.data = solveAll(ref.ref, ctx);
+      }
    } else {
       if (ref.arrayVar) {
-         console.log(ref);
+//         console.log(ref);
          i = 0;
          do {
             arr = solve(dom.tree, ctx[i]);
@@ -640,7 +702,7 @@ function bind(data, dom, model) {
          return true;
       },
       set: function(target, property, value, receiver) {
-         console.log("set arg", arguments);
+//         console.log("set arg", arguments);
 
          target[property] = value;
          dom.prana.sync();
@@ -802,7 +864,7 @@ var prana = {
                            prom = new Promise(ready);
                            data = defs[i].js.call(data, prom);
                            dataProxy = bind(data,self.root,html);
-                           console.log("root", self.root);
+//                           console.log("root", self.root);
                         };
                      }({});
 

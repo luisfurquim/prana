@@ -170,9 +170,10 @@ At the end of your main function, you MUST return 'this' to Prana.
 ## Propagation
 
 Under certain conditions, Prana automatically propagates values across Prana modules.
-There are two types of propagation:
+There are three types of propagation:
 * Propagation down;
-* Propagation up.
+* Propagation up;
+* Propagation on form elements.
 
 ### Propagation Down;
 
@@ -302,5 +303,62 @@ And because parent module bound 'a' attribute of child to its 'x' property, this
 So, why we saw no propagation from the child to the parent in the first example?
 That's because propagation up only occurs when the bind is limited to the value of the property and not a bit more.
 In other words 'a={{x}}' binds 'a' with 'x', but 'a="Answer: {{x}}"' doesn't bind them because of the presence of the 'Answer: ' string.
+
+
+### Propagation on form elements
+
+Suppose your Prana module has these HTML template and javascript logic shown below:
+
+```HTML
+<input type="text" value="{{x}}"/>
+<select value="{{s}}">
+   <option value="1">One</option>
+   <option value="2">Two</option>
+   <option value="3">Three</option>
+</select>
+<textarea>{{t}}</textarea>
+```
+
+```Javascript
+export const attr = [];
+export default function myModule(ready) {
+   this.x = "Some text";
+   this.s = 2;
+   this.t = "Initial text";
+
+   ready.then(function(obj) {
+      setTimeout(function() {
+         this.x = "New auto input";
+         this.s = 3;
+         this.t = "New auto text";
+
+         setTimeout(function() {
+            console.log("obj.this", obj.this);
+         }, 10000);
+      }, 10000);
+   });
+
+}
+```
+
+After ten seconds all the three form elements will have their values changed according to its bindings to the corresponding 'this' properties.
+And, after this, before the next ten seconds passes, if you manually change their values on the rendered page, you will see in the console window that the values you entered in the form elements were propagated back to the corresponding properties on your 'this'.
+
+*Oops! There was another gotcha here! only the values you entered in the 'input' and 'select' fields were propagated back to the properties on 'this'!!! The value of the textarea wasn't propagated back!*.
+So, change your HTML template to the example below:
+
+```HTML
+<input type="text" value="{{x}}"/>
+<select value="{{s}}">
+   <option value="1">One</option>
+   <option value="2">Two</option>
+   <option value="3">Three</option>
+</select>
+<textarea value="{{t}}"></textarea>
+```
+
+Now, after reloading the page and trying the steps above again, you will see that all text entered in the textarea field was propagated back accordingly.
+
+*Notice: here the backpropagation follow the same rules os propagation up: it only occurs when the bind is limited to the value of the property and not a bit more*.
 
 
