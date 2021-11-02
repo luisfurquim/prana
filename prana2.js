@@ -417,15 +417,26 @@ function stack(index, subctx, mainctx) {
    return stk;
 }
 
-function cloneNode(model) {
-   var i, node;
 
-   node = model.cloneNode(true);
+function cloneRefs(model, node) {
+   var i;
+
    for(i=0; i<model.attributes.length; i++) {
       if (model.attributes[i].pranaRef !== undefined) {
          node.attributes[i].pranaRef = model.attributes[i].pranaRef;
       }
    }
+
+   for(i=0; i<model.childNodes.length; i++) {
+      cloneRefs(model.childNodes[i], node.childNodes[i]);
+   }
+}
+
+function cloneNode(model) {
+   var node;
+
+   node = model.cloneNode(true);
+   cloneRefs(model, node);
 
    return node;
 }
