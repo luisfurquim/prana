@@ -357,6 +357,6 @@ So, change your HTML template to the example below:
 
 Now, after reloading the page and trying the steps above again, you will see that all text entered in the textarea field was propagated back accordingly.
 
-**Notice: here the backpropagation follow the same rules os propagation up: it only occurs when the bind is limited to the value of the property and not a bit more**.
+**Notice: here the backpropagation follow the same rules of propagation up: it only occurs when the bind is limited to the value of the property and not a bit more**.
 
 
