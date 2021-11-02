@@ -326,9 +326,9 @@ export default function myModule(ready) {
 
    ready.then(function(obj) {
       setTimeout(function() {
-         this.x = "New auto input";
-         this.s = 3;
-         this.t = "New auto text";
+         obj.this.x = "New auto input";
+         obj.this.s = 3;
+         obj.this.t = "New auto text";
 
          setTimeout(function() {
             console.log("obj.this", obj.this);
