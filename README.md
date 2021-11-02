@@ -18,8 +18,6 @@ Obviously any contribution (feedback, bug reports, patches, stars, buzz on the m
 Eventually someone could point out that this project is like a competitor to great popular platforms (like Angular, React, Vue, etc.) and, different from them, is a very small, simple and limited solution.
 So, that's exactly the point: it is a solution intended to be small and simple!
 
-This Readme instructions are still under construction, there is more to come!
-
 
 # How to use it
 
