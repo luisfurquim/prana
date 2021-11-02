@@ -8,8 +8,9 @@ The first version is on the repository only for historical/study purposes.
 Please avoid using it on any production basis! You have been warned!
 
 So, the second version is also innapropriated for production use, but I'm working to reach the point where it may be used soon.
-Especifically it has problems on array handle and also has no support for form elements handle.
-They are my next target now. Also, there's no support yet for expression handling (I mean no operators like '+', '-', '*', etc).
+Especifically it has no support for form elements handle.
+This is my next target now.
+Also, there's no support yet for expression handling (I mean no operators like '+', '-', '*', etc).
 This will be addressed later.
 
 Obviously any contribution (feedback, bug reports, patches, stars, buzz on the media, etc.) will be appreciated!
@@ -175,7 +176,7 @@ There are two types of propagation:
 
 ### Propagation Down;
 
-Propagation down occurs whenever you change a property in a module's 'this' which id used to define the value of an attribute of an element's tag of another module.
+Propagation down occurs whenever you change a property in a module's 'this' which is used to define the value of an attribute of an element's tag of another module.
 
 See the example below:
 
@@ -225,11 +226,11 @@ export default function childModule(ready) {
 
 ```
 
-So, the parent module's template invoke the child module by using its element tag and binds its attribute 'a' to it's property 'x'.
+So, the parent module's template invoke the child module by using its element tag and binds its attribute 'a' to a brace expression which depends on it's property 'x'.
 According to parent's logic, after 3 seconds its 'x' property is changed from "" to "42".
 This fires a value propagation, first changing the HTML from its own template (making the attribute change to "Answer: 42" ).
-Because this an attribute of a Prana module's element tag, propagation continues across module boudaries and so the child module's property 'a' changes its value from "Answer: " to "Answer: 42".
-Finally, by modifying 'a' property's value, the child module template is also changed because it is bound to the corresponding property, according to the brace syntax.
+Because this is an attribute of a Prana module's element tag, propagation continues across module boudaries and so the child module's property 'a' changes its value from "Answer: " to "Answer: 42".
+Finally, by modifying 'a' property's value, the child's module template is also changed because it is bound to the corresponding property, according to the brace syntax.
 
 
 
@@ -282,7 +283,7 @@ export default function childModule(ready) {
 
 ```
 
-After 8 seconds, the child module will change it a property to "21 + 21".
+After 8 seconds, the child module will change its 'a' property to "21 + 21".
 It will change the template according to the bind using the brace syntax.
 But this will be all the propagation you'll see.
 No propagation of any value will happen to the parent module.
