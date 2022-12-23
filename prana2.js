@@ -269,10 +269,10 @@ function isInSVG(dom) {
 }
 
 
-function getReferences(model, parent) {
+function getReferences(model, domParent) {
    var i, j;
    var tree={}, arrays=[];
-   var refs, tmpref, found, hasRef, arrayVar, cond, sub, forceSync;
+   var refs, tmpref, found, noSpan, hasRef, arrayVar, cond, sub, forceSync;
    var plug, parent, name, attName, value;
    var szAttr;
 
@@ -310,7 +310,16 @@ function getReferences(model, parent) {
    for(i=0; i<szAttr; i++) {
 
       if (model.attributes[i].name.substr(0,1) == "*") {
-         arrayVar = model.attributes[i].name.substr(1);
+         if (model.attributes[i].name.substr(1,1) == "*") {
+            if (model.parentNode.children.length != 1) {
+               throw "Double star used on attribute " + model.attributes[i].name.substr(2) + ", but it is not the only child";
+            }
+            arrayVar = model.attributes[i].name.substr(2);
+            noSpan = true;
+         } else {
+            arrayVar = model.attributes[i].name.substr(1);
+            noSpan = false;
+         }
          found = true;
          continue;
       }
@@ -400,23 +409,45 @@ function getReferences(model, parent) {
       tree.cond = cond;
       model.removeAttribute("?" + cond);
       model.tree = parseReference(tokenize(cond));
-      model.daddy = parent;
+      model.daddy = domParent;
    }
 
    if (arrayVar !== undefined) {
       tree.arrayVar = arrayVar;
-      model.removeAttribute("*" + arrayVar);
-      if (isInSVG(model)) {
-         plug = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      if (noSpan) {
+         model.removeAttribute("**" + arrayVar);
+         if (isInSVG(model)) {
+            plug = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+         } else {
+            plug = document.createElement("SPAN");
+            plug.setAttribute("style", "margin: 0px; padding: 0px;");
+         }
+
+         model.parentNode.model = model;
+         [ model.parentNode.aCtrl, model.parentNode.aIndex ] = arrayVar.split(":");
+
+         model.parentNode.tree = parseReference(tokenize(model.parentNode.aCtrl));
+         parent = model.parentNode.parentNode;
+         parent.replaceChild(plug, model.parentNode);
+         plug.appendChild(model.parentNode);
+         model.parentNode.removeChild(model);
       } else {
-         plug = document.createElement("SPAN");
-         plug.setAttribute("style", "margin: 0px; padding: 0px;");
+         model.removeAttribute("*" + arrayVar);
+         if (isInSVG(model)) {
+            plug = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+         } else {
+            plug = document.createElement("SPAN");
+            plug.setAttribute("style", "margin: 0px; padding: 0px;");
+         }
+
+         plug.model = model;
+         [ plug.aCtrl, plug.aIndex ] = arrayVar.split(":");
+
+         plug.tree = parseReference(tokenize(plug.aCtrl));
+         parent = model.parentNode;
+         parent.replaceChild(plug, model);
       }
-      plug.model = model;
-      [ plug.aCtrl, plug.aIndex ] = arrayVar.split(":");
-      plug.tree = parseReference(tokenize(plug.aCtrl));
-      parent = model.parentNode;
-      parent.replaceChild(plug, model);
+
    }
 
    for(i=0; i<model.childNodes.length; i++) {
@@ -451,7 +482,7 @@ function solveAll(ref, ctx) {
    return out;
 }
 
-function syncElement(dom, ref, ctx, syncDown) {
+function syncElement(dom, ref, ctx, syncDown, change) {
    var k, val, attr, name;
 
    for(k in ref.refs) {
@@ -495,7 +526,7 @@ function syncElement(dom, ref, ctx, syncDown) {
    }
 
    for(k in ref.children) {
-      sync(dom.childNodes[k], ref.children[k], ctx, syncDown);
+      sync(dom.childNodes[k], ref.children[k], ctx, syncDown, change);
       if ((dom.childNodes[k].root) && (dom.childNodes[k].root.prana)) {
          dom.childNodes[k].root.prana.maySync = true;
       }
@@ -541,6 +572,14 @@ function cloneRefs(model, node) {
       node.model = model.model;
    }
 
+   if (model.pRoot !== undefined) {
+      node.pRoot = model.pRoot;
+   }
+
+   if (model.eHandlers !== undefined) {
+      node.eHandlers = model.eHandlers;
+   }
+
    if (model.attributes !== undefined) {
       for(i=0; i<model.attributes.length; i++) {
          if (model.attributes[i].pranaRef !== undefined) {
@@ -571,7 +610,7 @@ function cloneNode(model) {
    return node;
 }
 
-function condSync(dom, ref, ctx, index, syncDown) {
+function condSync(dom, ref, ctx, index, syncDown, change) {
    var i, j, res;
    var newNode;
    var tree;
@@ -600,7 +639,7 @@ function condSync(dom, ref, ctx, index, syncDown) {
          dom.parentNode.replaceChild(dom.model, dom);
          dom = model;
       }
-      syncElement(dom, ref, ctx, syncDown);
+      syncElement(dom, ref, ctx, syncDown, change);
    } else {
       if (dom.nodeType == Node.ELEMENT_NODE) {
          newNode = document.createComment("if false");
@@ -626,8 +665,8 @@ function condSync(dom, ref, ctx, index, syncDown) {
    }
 }
 
-function sync(dom, ref, ctx, syncDown) {
-   var i;
+function sync(dom, ref, ctx, syncDown, change) {
+   var i, kdel;
    var arr, res;
    var ndx;
    var plug;
@@ -656,7 +695,22 @@ function sync(dom, ref, ctx, syncDown) {
             throw "Unresolved symbol " + dom.aCtrl + " during array syncing";
          }
 
-         for(i=0; (i<arr.length) && (i<dom.childNodes.length); i++) {
+			if ((change !== undefined) && (change.delete !== undefined)) {
+				if (arr === change.delete.target) {
+					if (typeof change.delete.property === 'string' || change.delete.property instanceof String) {
+						kdel = parseInt(change.delete.property, 10);
+					} else {
+						kdel = change.delete.property;
+					}
+				}
+			}
+
+			i = 0;
+         while ((i<arr.length) && (i<dom.childNodes.length)) {
+				if (kdel === i) {
+					dom.removeChild(dom.childNodes[i]);
+					continue;
+				}
             ndx = {};
             ndx[dom.aIndex] = i;
             if (ref.cond) {
@@ -664,6 +718,7 @@ function sync(dom, ref, ctx, syncDown) {
             } else {
                syncElement(dom.childNodes[i], ref, stack(ndx, [arr[i]], ctx), syncDown);
             }
+            i++;
          }
          for(; i<arr.length; i++) {
             ndx = {};
@@ -678,9 +733,13 @@ function sync(dom, ref, ctx, syncDown) {
             try {
                cloned = cloneNode(dom.model);
                if (dom.tree !== undefined) {
-                  cloned.tree = dom.tree;
+                  cloned.tree      = dom.tree;
+                  cloned.pRoot     = dom.pRoot;
+                  cloned.eHandlers = dom.eHandlers;
                } else {
-                  cloned.tree = dom.model.tree;
+                  cloned.tree      = dom.model.tree;
+                  cloned.pRoot     = dom.model.pRoot;
+                  cloned.eHandlers = dom.model.eHandlers;
                }
             } catch(e) {
             }
@@ -691,30 +750,37 @@ function sync(dom, ref, ctx, syncDown) {
             dom.removeChild(dom.childNodes[i]);
          }
       } else if (ref.cond) {
-         condSync(dom, ref, ctx, undefined, syncDown);
+         condSync(dom, ref, ctx, undefined, syncDown, change);
       } else {
-         syncElement(dom, ref, ctx, syncDown);
+         syncElement(dom, ref, ctx, syncDown, change);
       }
    }
 }
 
-function bind(data, dom, model) {
+function bind(data, dom, model, before) {
    var prx;
    var parent = dom.parentNode.host;
+
+   if (before !== undefined) {
+      before = dom;
+      dom = dom.parentNode;
+   }
 
    if (data.__isProxy) {
       return data;
    }
 
-   do {
-      parent = parent.parentNode;
-   } while ((parent !== undefined) && (parent !== null) && (parent !== document) && (parent.prana === undefined));
+   if (parent !== undefined) {
+      do {
+         parent = parent.parentNode;
+      } while ((parent !== undefined) && (parent !== null) && (parent !== document) && (parent.prana === undefined));
+   }
 
    dom.prana = {
       this: data,
       refs: getReferences(model, dom),
-      syncLocal: function(syncDown) {
-         sync(model, dom.prana.refs, [dom.prana.this], syncDown);
+      syncLocal: function(syncDown, change) {
+         sync(model, dom.prana.refs, [dom.prana.this], syncDown, change);
       },
 
       syncUp: function(childSource) {
@@ -749,8 +815,8 @@ function bind(data, dom, model) {
          }
       },
 
-      sync: function() {
-         dom.prana.syncLocal(true);
+      sync: function(change) {
+         dom.prana.syncLocal(true, change);
          dom.prana.syncUp(dom);
       }
    };
@@ -781,7 +847,12 @@ function bind(data, dom, model) {
       // then these bugs will cause their failures anyway and it will be the user's responsibility to detect and fix)
    };
 */
-   dom.appendChild(model);
+
+   if (before === undefined) {
+      dom.appendChild(model);
+   } else {
+      dom.insertBefore(model, before);
+   }
    setTimeout(function() {
       var i, sym, key, changed = false;
 
@@ -809,11 +880,21 @@ function bind(data, dom, model) {
          return target[key];
       },
       deleteProperty: function(target, property) {
-         if (Array.isArray(target)) {
-            target.splice(property,1);
-         } else {
-            delete target[property];
+         if (Array.isArray(target) && (typeof property === "string")) {
+            property = parseInt(property, 10);
          }
+
+			if (Array.isArray(target)) {
+				target.splice(property,1);
+				dom.prana.sync({delete: {
+					target: target,
+					property: property
+				}});
+			} else {
+				delete target[property];
+				dom.prana.sync();
+			}
+
          return true;
       },
       set: function(target, property, value, receiver) {
@@ -828,7 +909,6 @@ function bind(data, dom, model) {
 
    return new Proxy(data, prx);
 }
-
 
 
 var prana = {
@@ -950,43 +1030,84 @@ var prana = {
                            self.root.appendChild(html);
 
                            self.connected = false;
+                           self.eHandlers = {};
                            self.ready = function(resolve, reject) {
-                              if ((dataProxy !== undefined) && self.connected) {
-                                 setTimeout(
-                                    function () {
-                                       resolve({
-                                          this: dataProxy,
-                                          dom: self.root
-                                       });
-                                    },
-                                    50
-                                 );
-                              } else {
-                                 setTimeout(
-                                    function () {
-                                       self.ready(resolve, reject);
-                                    },
-                                    10
-                                 );
-                              }
-                           };
+										if ((dataProxy !== undefined) && self.connected) {
+											self.trigger = function(eventName) {
+												var j, k;
+												var args = [];
+
+												if (self.pRoot === undefined) {
+													console.error("need parentRoot", self.modName);
+													self.pRoot = self.parentNode;
+													while((self.pRoot!==null) && (self.pRoot.host===undefined)) { 
+														self.pRoot = self.pRoot.parentNode;
+													}
+													if (self.pRoot !== null) {
+														self.pRoot = self.pRoot.host;
+													}
+												}
+
+												eventName = "@" + eventName;
+												for(j=0; j<self.attributes.length; j++) {
+													att = self.attributes[j];
+													if (att.name == eventName) {
+														if (typeof self.pRoot.this[att.value] === 'function') {
+															for(k=1; k<arguments.length; k++) {
+																args.push(arguments[k]);
+															}
+															self.pRoot.this[att.value].call(self, ...args);
+															break;
+														}
+													}
+												}
+											};
+
+											setTimeout(
+												function () {
+													resolve({
+														this: dataProxy,
+														dom: self.root,
+														element: self
+													});
+												},
+												100
+											);
+										} else {
+											setTimeout(
+												function () {
+													self.ready(resolve, reject);
+												},
+												10
+											);
+										}
+									}
 
                            prom = new Promise(self.ready);
+
                            for(j=0; j<self.attributes.length; j++) {
                               att = self.attributes[j];
                               data[att.name] = att.value;
+										if (att.name.substring(0,1) == "@") {
+											self.eHandlers[att.name.substring(1)] = att.value;
+										}
                            }
-
                            data = defs[i].js.call(data, prom);
+//                           console.warn("defined elem.this", self.modName);
+									self.this = data;
+
                            dataProxy = bind(data,self.root,html);
 //                           console.log("root", self.root);
                         };
                      }({});
 
+                     self.modName = modkeys[i];
+
                      initElement();
                   }
 
                   connectedCallback() {
+//							console.error("connected", this.modName);
                      this.connected = true;
                   }
 
@@ -1012,9 +1133,61 @@ var prana = {
             );
          });
       }
+   },
+
+   onChange: function(data, fn) {
+      var prx;
+
+      prx = {
+         apply: function(target, thisArg, argumentsList) {
+            console.log("apply", target, thisArg, argumentsList, this);
+            return thisArg[target].apply(this, argumentList);
+         },
+         get: (target, key) => {
+            if ((target.hasOwnProperty(key)) && (typeof target[key] === "object") && (target[key] !== null)) {
+               return new Proxy(target[key], prx);
+            }
+
+            return target[key];
+         },
+         deleteProperty: function(target, property) {
+            if (Array.isArray(target)) {
+               target.splice(property,1);
+            } else {
+               delete target[property];
+            }
+
+            setTimeout(function() {
+               fn("D", target, property);
+            }, 100);
+
+            return true;
+         },
+         set: function(target, property, value, receiver) {
+   //         console.log("set arg", arguments);
+
+            setTimeout(function() {
+               fn("S", target, property, value, receiver);
+            }, 100);
+
+
+            target[property] = value;
+
+            return true;
+         }
+      };
+
+      return new Proxy(data, prx);
+   },
+
+   append: bind,
+
+   insertBefore: function(data, dom, model) {
+      bind(data, dom, model, true);
    }
 
 };
 
 
 export default prana;
+
